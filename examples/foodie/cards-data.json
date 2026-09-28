@@ -1,0 +1,40 @@
+{
+  "style": "paper-light",
+  "seriesName": "家乡美食图鉴 · 测试",
+  "posts": [
+    {
+      "n": 1,
+      "dir": "01-测试篇",
+      "cover": {
+        "kicker": "第 1 篇 · 共 1 篇",
+        "title": "一碗<em>好面</em>的标准",
+        "sub": "这是一份用于验证 skill 渲染链路的测试数据，不会被发布。",
+        "visual": "<div class=\"layers\"><div class=\"layer\"><span class=\"t\">汤底</span><span class=\"d\">清晨熬足 4 小时</span></div><div class=\"layer hot\"><span class=\"t\">面条</span><span class=\"d\">手工现拉，三揉三醒</span></div><div class=\"layer\"><span class=\"t\">浇头</span><span class=\"d\">当季时令为主</span></div></div>",
+        "hook": "一碗面为什么值得专门写一篇？"
+      },
+      "cards": [
+        {
+          "name": "2-steps",
+          "eyebrow": "图解 ① · 流程",
+          "heading": "一碗面的诞生",
+          "mermaid": "flowchart TB\n  A[\"凌晨 4 点熬汤\"] --> B[\"上午 9 点和面\"]\n  B --> C[\"三揉三醒\"]\n  C --> D[\"现拉现煮\"]\n  D --> E[\"浇头上台\"]",
+          "bullets": [
+            { "lead": "汤是灵魂", "text": "骨头冷水下锅，沸腾后转文火" },
+            { "lead": "面看手感", "text": "湿度差一点，口感差一截" }
+          ]
+        },
+        {
+          "name": "3-recap",
+          "eyebrow": "本篇划重点",
+          "heading": "记住这一句",
+          "recap": [
+            { "k": "汤", "v": "<b>足时</b>：4 小时文火是底线" },
+            { "k": "面", "v": "<b>现做</b>：醒面次数决定筋道" },
+            { "k": "浇", "v": "<b>时令</b>：不追贵，只追当季" }
+          ],
+          "preview": { "lb": "下篇预告", "tx": "测试数据不会有下篇", "small": "skill 渲染链路验证到此结束" }
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,8 @@
 //   "style": "tech-dark" | "paper-light" | "warm-life",   // 或对象，覆盖 tech-dark 的任意 token
 //   "seriesName": "DEEPSEEK HARNESS · 架构图解",           // 页眉 chip 文案
 //   "footer": "架构图解 · 第 {n} 篇 / 共 {total} 篇",       // 可选，{n}/{total} 会替换；默认用 seriesName
+//   "totalPosts": 6,                                       // 可选，系列总篇数，默认 posts.length。
+//                                                         // 分批渲染/单篇验证时必须显式给，否则页脚与封面 kicker 的总数矛盾
 //   "posts": [{
 //     "n": 1, "dir": "01-目录名",
 //     "cover": { "kicker": "第 1 篇 · 共 6 篇", "title": "大标题，<em>渐变强调</em>", "sub": "副标题", "visual": "<div class=\"layers\">…</div>", "hook": "本篇回答的问题" },
@@ -197,7 +199,7 @@ h2 em { font-style:normal; color:${T.kicker}; }
 .map6 .m b { color:${T.kicker}; font-family:"SF Mono",Menlo,monospace; margin-right:7px; }
 `;
 
-const total = data.posts.length;
+const total = data.totalPosts ?? data.posts.length;
 const footText = (n) => (data.footer ?? `${data.seriesName} · 第 {n} 篇 / 共 ${total} 篇`).replaceAll("{n}", String(n)).replaceAll("{total}", String(total));
 const pageFoot = (post, idx) => `
 <footer>

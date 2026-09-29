@@ -2,8 +2,8 @@
 name: xiaohongshu-publisher
 description: 策划、制作并发布小红书图文笔记系列（任何主题、任何行业）。覆盖需求访谈、标题正文话题文案、知识卡片配图渲染、Ego Lite 真实发布、定时自动化队列。Use when the user wants to 发小红书、做小红书笔记/图文、把资料改成小红书内容、知识卡片系列、小红书定时/自动发布 — even if they only say「做几篇笔记」「发个系列」without naming 小红书.
 metadata:
-  version: "1.0.0"
-  date: "2026-09-28"
+  version: "1.1.0"
+  date: "2026-09-30"
 ---
 
 # 小红书图文系列制作与发布
@@ -13,10 +13,10 @@ metadata:
 ## 总流程
 
 ```
-需求确认 → 目录与 manifest → 文案 → 配图 → 视觉验收 → [发布首篇] → [自动化队列]
+需求确认 → 对标分析 → 目录与 manifest → 文案 → 配图 → 视觉验收 → [发布首篇] → [自动化队列]
 ```
 
-- 用户只要素材不发布 → 做到「视觉验收」为止。
+- 用户只要素材不发布 → 做到「视觉验收」为止（对标分析照做，它提升内容质量本身）。
 - 用户要发布 → 先发首篇验证链路，再建自动化（或经确认逐篇手动发）。
 - 需求本身模糊（没有素材、没定主题）→ 先走一轮「需求确认」；已有明确素材和要求的可跳过直接执行。
 
@@ -32,6 +32,30 @@ metadata:
 | 质量把关 | 审第 1 篇再启动 / 全自动直发 / 全部审完再发 |
 | 首篇时机 | 生成后立即发首篇 / 从下一个周期点开始 |
 | 每篇张数 | 4 张（封面+2 内页+划重点）/ 3 张 / 6 张 |
+
+## 阶段 0.5 · 对标分析（每系列一次，必做）
+
+目的：把同主题高赞帖的引流打法提炼成可执行规范，反哺文案（阶段 2）与封面（阶段 3）。结论落在 `<series-root>/benchmark-report.md`（人读）+ `benchmark.json`（结构化，后续阶段程序化引用）。
+
+**步骤**：
+
+1. **定关键词**：从用户素材提炼 1~2 个赛道词（主词 + 补充词），向用户口头确认一句即可，不必 AskUserQuestion。
+2. **抓样本**（Ego Lite 已登录会话，**只读，不点赞不收藏不关注**）：
+
+   ```sh
+   # /tmp/xhs-benchmark-task.json: {"keywords": ["咖啡"], "outDir": "<series-root> 绝对路径", "maxCards": 20, "detailTop": 5}
+   ego-browser nodejs < <skill-dir>/scripts/scrape-benchmark.mjs
+   ```
+
+   产出 `<series-root>/tools/benchmark-samples.json`（原始样本：标题/点赞/收藏/评论/封面图/链接，封面图存 `tools/benchmark-covers/`）。脚本失败 → 按 `references/benchmark-recipe.md` 手动配方操作。
+
+3. **分析归类**（模型做，产出写进 benchmark.json；schema 与完整示例见 `references/benchmark-recipe.md`）：
+   - `titlePatterns`：钩子模式数组，每条必须含 `examples`（样本原句）+ `count`（样本量）+ `medianLikes`（该模式样本点赞中位数）——**无样本数据支撑的结论不许写入**（杜绝「标题要有钩子」式空话）；
+   - `coverInsights`：主导封面形式（大字报/实拍/图表卡片）、配色倾向、信息密度、文字量；
+   - `topicPool`：话题标签池，按样本出现频次排序；
+   - `structureNotes`：正文结构特征（分段长度、emoji 密度、互动引导位置、收藏点/干货点设计）；
+   - `engagementBaseline`：样本点赞/收藏/评论中位数；**收藏 > 点评 = 干货型赛道**的信号要写明。
+4. **降级**：抓取失败或有效样本 <5 → 降级 WebSearch 公开爆款案例 + 请用户提供对标笔记链接，`benchmark.json` 加 `"degraded": true` 并在报告标注数据来源，流程继续不中断。
 
 ## 阶段 1 · 目录与 manifest
 
@@ -49,13 +73,18 @@ metadata:
 
 ## 阶段 2 · 文案规范
 
-- 标题 ≤20 字（小红书硬限制），含钩子；正文 ≤1000 字，口语化短段 + emoji + 分步序号；文末 5~6 个话题标签（#xx 格式，正文内）。
+写文案前先读 `benchmark.json`（阶段 0.5 产物），以下为硬规范，逐条对照执行：
+
+- 标题 ≤20 字（小红书硬限制），含钩子；**必须套用 `titlePatterns` 中某个已验证模式**，并在 copy.md 标题行尾标注 `<!-- 模式：模式名 -->`；套模式为形、用户素材为实，不得为凑模式虚构素材外内容。
+- 正文 ≤1000 字，口语化短段 + emoji + 分步序号；**结构参考 `structureNotes`**（分段长度、emoji 密度、互动引导位置向高赞样本看齐）；干货型赛道（收藏>点赞）正文里埋明确的收藏点（清单/步骤/数据表）。
+- 文末 5~6 个话题标签（#xx 格式，正文内），**优先从 `topicPool` 选取**，可补 1~2 个精准自建标签。
 - 系列每篇结尾带序号（如 1/6）和下篇预告；最终篇带全系列回顾 + 互动引导。
 - 内容只基于用户提供的材料；不引入用户材料之外的内部信息。
+- 标题降级场景（`degraded: true` 或无 benchmark.json）：按通用钩子模式（数字+痛点/疑问/身份代入/利益承诺）写，并向用户说明未经对标验证。
 
 ## 阶段 3 · 配图
 
-**路线 A · 渲染知识卡片（默认）**：适合知识/技术/方法论主题，文字 100% 准确。用本 skill 脚本，见阶段 4。
+**路线 A · 渲染知识卡片（默认）**：适合知识/技术/方法论主题，文字 100% 准确。用本 skill 脚本，见阶段 4。风格选择**以 `coverInsights` 为依据**：封面形式（大字报/图表卡片）与配色倾向向对标结论看齐，cards-data.json 里写明所选风格及对应的 benchmark 结论；三套预设都不匹配时用对象覆盖 token，差距大就新增预设。
 
 **路线 B · AI 插画（mmx-cli skill）**：适合情感/生活方式/氛围主题的封面。注意 AI 生成的中文文字不可靠——凡需要准确文字的图不用 AI 直出，封面也必须逐张人工检查。
 
@@ -76,11 +105,12 @@ ego-browser nodejs < <skill-dir>/scripts/render-cards.js    # 读取 /tmp/xhs-re
 
 **设计规则（视觉验收会抓）**：
 - Mermaid 图节点 ≤7 个、标签短；脚本会按 viewBox 等比缩放进面板（小图允许放大到 1.6x）。
-- 中文正文加 `text-wrap: pretty` 防孤字；要点区用 `space-evenly` 弹性分布，任何连续空带 > 卡高 1/5 即 fail。
+- 中文正文加 `text-wrap: pretty` 防孤字；要点区用 `space-evenly` 弹性分布，任何连续空带 > 卡高 1/5 即 fail；视觉区块条目 ≥5 条，条目太少必出空带。
+- 分批渲染或单篇验证时 cards-data.json 必须显式给 `totalPosts`，否则页脚/页码总数与封面 kicker 矛盾。
 - 三种卡片类型：`cover`（钩子+大标题+视觉区）、内页（eyebrow+heading+mermaid|visual+bullets）、`recap`（划重点+下篇预告）。
 - emoji 不要放进卡片图（headless 渲染不可靠），emoji 只用于正文文案。
 
-**视觉验收循环（必做，不可跳过）**：渲染完派 `presentations:visual-judge` 子代理逐张 Read PNG，按「无截断/无溢出/无重叠、Mermaid 完整可读、无孤字、无大面积空白、风格统一」验收，fail 就改数据重渲再验，直到全部 pass。24 张可拆两个并行 judge。
+**视觉验收循环（必做，不可跳过）**：渲染完派 `presentations:visual-judge` 子代理逐张 Read PNG，按「无截断/无溢出/无重叠、Mermaid 完整可读、无孤字、无大面积空白、风格统一、**封面与 `coverInsights` 对标结论一致（形式/信息密度）**」验收，fail 就改数据重渲再验，直到全部 pass。24 张可拆两个并行 judge。
 
 ## 阶段 5 · 发布（Ego Lite）
 
@@ -110,6 +140,7 @@ ego-browser nodejs < <skill-dir>/scripts/publish-note.mjs
 ## 硬规则
 
 - 发布是对外动作：系列首篇发布前给用户确认（除非用户明示全自动）；用户材料之外的内容不进正文。
+- 对标抓取是只读动作：不点赞、不收藏、不关注、不评论，每系列抓取 ≤2 次；搜索页假死（evaluate 超时）时关页换新 Page 重试一次，仍失败走阶段 0.5 降级，不反复重试。
 - 每次发布后把 manifest 状态写回，它是唯一事实源；不要用别处状态覆盖它。
 - Ego Lite 升级提示一律不自动执行，报告用户。
 - 敏感主题（医疗/金融/投资建议类内容）提醒用户注意平台规范后再继续。

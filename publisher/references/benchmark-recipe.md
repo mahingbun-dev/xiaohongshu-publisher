@@ -2,6 +2,8 @@
 
 脚本 `scripts/scrape-benchmark.mjs` 是本配方的代码化；脚本失败时按本文档手动操作。操作前先读 ego-browser Skill（`~/.agents/skills/ego-browser/SKILL.md`），只用其列出的 API。
 
+> 平台注记：本文流程依赖 Ego Lite，仅 macOS 可用；Windows 上需登录态的浏览器操作改走 ego-browser skill 的 Windows path 章节（接管用户 Chrome 复用登录态）；两个 .mjs 脚本（`publish-note.mjs` / `scrape-benchmark.mjs`）在 Windows 上会被平台守卫拦截（exit 1）。
+
 ## 0. 前置：登录检查
 
 用创作者平台判据（比 www 首页可靠——首页对已登录用户也可能弹扫码提示，属误报）：

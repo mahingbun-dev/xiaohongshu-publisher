@@ -49,6 +49,8 @@ metadata:
 
    产出 `<series-root>/tools/benchmark-samples.json`（原始样本：标题/点赞/收藏/评论/封面图/链接，封面图存 `tools/benchmark-covers/`）。脚本失败 → 按 `references/benchmark-recipe.md` 手动配方操作。
 
+   **平台注记**：本步骤仅 macOS 可用（依赖 Ego Lite）；Windows 上需登录态的浏览器操作改走 ego-browser skill 的 Windows path 章节（接管用户 Chrome 复用登录态）；两个 .mjs 脚本（`publish-note.mjs` / `scrape-benchmark.mjs`）在 Windows 上会被平台守卫拦截（exit 1）。
+
 3. **分析归类**（模型做，产出写进 benchmark.json；schema 与完整示例见 `references/benchmark-recipe.md`）：
    - `titlePatterns`：钩子模式数组，每条必须含 `examples`（样本原句）+ `count`（样本量）+ `medianLikes`（该模式样本点赞中位数）——**无样本数据支撑的结论不许写入**（杜绝「标题要有钩子」式空话）；
    - `coverInsights`：主导封面形式（大字报/实拍/图表卡片）、配色倾向、信息密度、文字量；
@@ -115,6 +117,8 @@ ego-browser nodejs < <skill-dir>/scripts/render-cards.js    # 读取 /tmp/xhs-re
 ## 阶段 5 · 发布（Ego Lite）
 
 前提：用户已在 Ego Lite 登录小红书（验证方法见 references）。
+
+**平台注记**：本阶段仅 macOS 可用（依赖 Ego Lite）；Windows 上需登录态的浏览器操作改走 ego-browser skill 的 Windows path 章节（接管用户 Chrome 复用登录态）；两个 .mjs 脚本（`publish-note.mjs` / `scrape-benchmark.mjs`）在 Windows 上会被平台守卫拦截（exit 1）。
 
 **首选脚本发布**（写任务文件后跑）：
 

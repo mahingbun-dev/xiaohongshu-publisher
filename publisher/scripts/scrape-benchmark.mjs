@@ -17,6 +17,13 @@
 // 抓取纪律（见 SKILL.md 硬规则）：只读，不点赞不收藏不关注；每系列调用本脚本 ≤2 次。
 // 路径优先级：A) CDP 拦截 search API 响应（渲染器假死免疫）→ B) DOM 提取（兜底）。
 // 失败不抛异常，summary 里带 error/degraded 字段，由调用方决定降级。
+// 平台守卫：Windows 上无 Ego Lite，直接退出并给出指引，避免晦涩堆栈。
+if (process.platform !== "darwin") {
+  console.error(
+    "平台不支持：本脚本仅支持 macOS（依赖 Ego Lite 的 ego-browser CLI）。Windows 上需登录态的浏览器操作，请改走 ego-browser skill 的 Windows path 章节（接管用户 Chrome 复用登录态），见 ~/.agents/skills/ego-browser/SKILL.md 的「Windows path」章节。"
+  );
+  process.exit(1);
+}
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 

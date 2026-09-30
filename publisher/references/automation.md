@@ -1,5 +1,7 @@
 # 定时发布队列：manifest 与 CronCreate 模板
 
+> 平台注记：本文流程依赖 Ego Lite，仅 macOS 可用；Windows 上需登录态的浏览器操作改走 ego-browser skill 的 Windows path 章节（接管用户 Chrome 复用登录态）；两个 .mjs 脚本（`publish-note.mjs` / `scrape-benchmark.mjs`）在 Windows 上会被平台守卫拦截（exit 1）。
+
 ## manifest.json 完整示例
 
 发布队列的唯一事实源。发布时不解析 copy.md，所有发布所需字段都在 manifest 里：

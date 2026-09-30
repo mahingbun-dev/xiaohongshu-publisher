@@ -2,6 +2,13 @@
 // 输入契约：/tmp/xhs-publish-task.json = {"seriesRoot": "<绝对路径>", "postId": "01"}
 // 行为：读 manifest → 校验 → 发布 → 核对 → 更新 manifest。失败保持 pending 并写 error。
 // 失败时按 references/publish-recipe.md 手动交互式操作。
+// 平台守卫：Windows 上无 Ego Lite，直接退出并给出指引，避免晦涩堆栈。
+if (process.platform !== "darwin") {
+  console.error(
+    "平台不支持：本脚本仅支持 macOS（依赖 Ego Lite 的 ego-browser CLI）。Windows 上需登录态的浏览器操作，请改走 ego-browser skill 的 Windows path 章节（接管用户 Chrome 复用登录态），见 ~/.agents/skills/ego-browser/SKILL.md 的「Windows path」章节。"
+  );
+  process.exit(1);
+}
 (async () => {
   const { readFile, writeFile } = await import("node:fs/promises");
   const taskFile = JSON.parse(await readFile("/tmp/xhs-publish-task.json", "utf8"));

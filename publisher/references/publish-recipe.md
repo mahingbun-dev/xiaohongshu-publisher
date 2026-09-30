@@ -2,6 +2,8 @@
 
 逐条都是实际踩过的坑，发布脚本 `scripts/publish-note.mjs` 是本配方的代码化；脚本失败时按本文档手动交互式操作。操作前先读 ego-browser Skill（`~/.agents/skills/ego-browser/SKILL.md`），只用其列出的 API。
 
+> 平台注记：本文流程依赖 Ego Lite，仅 macOS 可用；Windows 上需登录态的浏览器操作改走 ego-browser skill 的 Windows path 章节（接管用户 Chrome 复用登录态）；两个 .mjs 脚本（`publish-note.mjs` / `scrape-benchmark.mjs`）在 Windows 上会被平台守卫拦截（exit 1）。
+
 ## 0. 登录态验证
 
 ```js

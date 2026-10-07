@@ -1,5 +1,9 @@
 ---
 name: xiaohongshu-publisher
+slug: xiaohongshu-publisher
+displayName: 小红书图文发布
+version: 1.1.0
+summary: 策划制作小红书图文笔记系列，并经 Ego Lite 浏览器真实发布
 description: 策划、制作并发布小红书图文笔记系列（任何主题、任何行业）。覆盖需求访谈、标题正文话题文案、知识卡片配图渲染、Ego Lite 真实发布、定时自动化队列。Use when the user wants to 发小红书、做小红书笔记/图文、把资料改成小红书内容、知识卡片系列、小红书定时/自动发布 — even if they only say「做几篇笔记」「发个系列」without naming 小红书.
 metadata:
   version: "1.2.0"

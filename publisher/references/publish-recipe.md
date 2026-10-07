@@ -1,4 +1,4 @@
-# Ego Lite 小红书发布配方（已实测 2026-09-28）
+# Ego Lite 小红书发布配方（已实测 2026-09-28；话题真实插入 2026-10-07 复测）
 
 逐条都是实际踩过的坑，发布脚本 `scripts/publish-note.mjs` 是本配方的代码化；脚本失败时按本文档手动交互式操作。操作前先读 ego-browser Skill（`~/.agents/skills/ego-browser/SKILL.md`），只用其列出的 API。
 
@@ -47,21 +47,49 @@ await page.setInputFiles("input[type=file]", [cover, p2, p3, p4]); // 绝对路�
 - 推荐图：3:4（1242×1660），png/jpg/webp，单张 ≤32MB，≥720×960。
 - 上传完成判据：右侧出现「笔记预览」+「1/4」字样（waitForFunction 检查 `.tiptap.ProseMirror` 出现即可）。
 
-## 3. 标题与正文
+## 3. 标题、正文与话题（话题必须真实插入）
 
 ```js
 await page.fill('input[placeholder*="标题"]', title);   // ≤20 字，超字数会被截断
 await page.click(".tiptap.ProseMirror");                 // 正文是 tiptap ProseMirror contenteditable
-await page.keyboard.paste(body);                         // 原生粘贴保留换行与 emoji；insertText 会丢换行
+await page.keyboard.paste(bodyTextSegment);              // 原生粘贴保留换行与 emoji；insertText 会丢换行
 ```
 
-## 4. 发布按钮（最大的坑）
+**关键：正文里的 `#话题` 不能随正文一起粘贴**。纯文本 `#` 不是话题——不会变蓝、不可点击、不进话题流量池（等于白写，还引导用户以为有关联流量）。每个话题必须单独走一遍「输入 → 联想下拉选中」：
 
-正文含 `#话题` 时，粘贴后光标处的**话题联想下拉框会弹出并恰好盖住发布按钮**，普通点击报 `<div> intercepts pointer events`：
+1. 把正文按 `#话题` 切成 text/topic 段，text 段照常 `keyboard.paste()`（话题后的半角空格要吃掉——编辑器插入话题节点后自带一个 `&nbsp;`）。
+2. 每个 topic 段：`keyboard.type("#话题名", { delay: 60 })`，编辑器会把这段文字标记为 suggestion 并弹出联想下拉。
+3. **下拉条目是异步拉取的**：容器 `#creator-editor-topic-container` 出现时可能还是上一次的旧条目（首轮曾因此全部 fallback）。必须轮询等待条目里出现精确匹配项再点：
 
-1. 先 `page.keyboard.press("Escape")` 关闭下拉。
-2. 拿 ref：`page.snapshot()` 输出里找 `button [ref=N]` 下一行是 `text "发布"`（按钮文本查询 `document.querySelectorAll("button")` 里 innerText 精确等于「发布」**经常找不到**，不要依赖 DOM 查询，以 snapshot ref 为准）。
-3. `page.click("@N", { timeout: 8000 })`；仍报拦截就补一次 Escape 后 `force: true`。
+```js
+// 等精确匹配项（话题名不区分大小写比对；不存在的话题也会出现，条目右侧 num 显示「新建话题」）
+await page.waitForFunction(
+  (w) => [...document.querySelectorAll("#creator-editor-topic-container .item .name")]
+    .some((n) => n.textContent.trim().toLowerCase() === w.toLowerCase()),
+  `#${name}`, { timeout: 10000 }
+);
+await page.evaluate((w) => {
+  [...document.querySelectorAll("#creator-editor-topic-container .item")]
+    .find((i) => i.querySelector(".name")?.textContent.trim().toLowerCase() === w.toLowerCase())
+    .click();
+}, `#${name}`);
+```
+
+4. 点击后编辑器插入真实话题节点，下拉自动关闭、光标后自动补一个空格：
+
+```html
+<a class="tiptap-topic" data-topic='{"id":"…","link":"…","name":"咖啡"}' contenteditable="false">#咖啡<span class="content-hide">[话题]#</span></a>
+```
+
+5. 无精确匹配项时 `Escape` 退回纯文本（不要乱选近似项，会悄悄改掉话题）。Escape 后 suggestion 装饰会退化为普通文本。
+6. **发布前核验**：统计编辑器里 `a.tiptap-topic` 的 `data-topic.name` 集合，与正文解析出的话题集合比对，不一致就失败重试，不发残缺笔记。
+
+## 4. 发布按钮
+
+话题逐个经下拉选中后，下拉会随点击自动关闭，一般不会遮挡发布按钮；但若走了 Escape 回退或正文以纯文本 `#` 结尾，下拉可能残留。保险动作：正文输入完后补一次 `Escape`。仍报拦截就 `force: true`。按钮 ref 的拿法：
+
+1. `page.snapshot()` 输出里找 `button [ref=N]` 下一行是 `text "发布"`（按钮文本查询 `document.querySelectorAll("button")` 里 innerText 精确等于「发布」**经常找不到**，不要依赖 DOM 查询，以 snapshot ref 为准）。
+2. `page.click("@N", { timeout: 8000 })`；仍报拦截就补一次 Escape 后 `force: true`。
 
 ## 5. 成功判定与核对
 
@@ -75,6 +103,9 @@ await page.keyboard.paste(body);                         // 原生粘贴保留�
 | --- | --- | --- |
 | `text="上传图文" matched 3 elements` | 同名元素 3 份 | 用第 1 节的 DOM 叶子元素点击 |
 | `page.click timed out: <span>/<div> intercepts pointer events` | 内层元素拦截 / 话题下拉遮挡 | Escape 后重试；snapshot ref 点击；必要时 force |
+| 笔记发布了但话题是灰黑色纯文本 | 话题没经联想下拉选中（直接粘贴正文所致） | 按第 3 节逐个插入真实话题；已发布的只能删了重发（平台不支持改话题） |
+| 话题插入全部 fallback | 下拉容器出现时条目还是旧的（异步未加载） | 轮询等待「精确匹配条目」出现，不要只等容器出现 |
+| `ego-browser` 报 NodeRuntime disconnected 且无业务日志 | 脚本里 RegExp 字面量写在 `exec` 循环条件内，每轮重建 lastIndex=0 → 死循环 OOM | 把带 `g` 标志的 RegExp 提到循环外 |
 | 截图出来是 CSS 尺寸（621×830） | `page.screenshot({raw:true})` 在部分版本不按 dsf 输出 | 用 `page.cdp("Page.captureScreenshot")` 取 base64 自行写盘 |
 | `task space not found: N` | 每次调用是新 Node 进程，spaceId 不持久 | `listTaskSpaces()` 查 id，用数字 id 复用 |
 | 浏览器权限弹窗（位置等）移交控制权 | 浏览器自有 prompt 只能用户处理 | 等待后 `takeOverTaskSpace(id)`；仍不行就报告用户 |

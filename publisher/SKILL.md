@@ -2,8 +2,8 @@
 name: xiaohongshu-publisher
 description: 策划、制作并发布小红书图文笔记系列（任何主题、任何行业）。覆盖需求访谈、标题正文话题文案、知识卡片配图渲染、Ego Lite 真实发布、定时自动化队列。Use when the user wants to 发小红书、做小红书笔记/图文、把资料改成小红书内容、知识卡片系列、小红书定时/自动发布 — even if they only say「做几篇笔记」「发个系列」without naming 小红书.
 metadata:
-  version: "1.1.0"
-  date: "2026-09-30"
+  version: "1.2.0"
+  date: "2026-10-07"
 ---
 
 # 小红书图文系列制作与发布
@@ -127,7 +127,7 @@ ego-browser nodejs < <skill-dir>/scripts/render-cards.js    # 读取 /tmp/xhs-re
 ego-browser nodejs < <skill-dir>/scripts/publish-note.mjs
 ```
 
-脚本做：登录检查（未登录 → handOff 交还用户并停止）→ 切「上传图文」页签 → 上传 4 图 → 填标题正文 → 处理话题下拉遮挡 → 点发布 → 确认跳转 `/publish/success` → 笔记管理核对 → 更新 manifest。
+脚本做：登录检查（未登录 → handOff 交还用户并停止）→ 切「上传图文」页签 → 上传 4 图 → 填标题 → 正文按段粘贴、`#话题` 逐个经联想下拉转成真实话题（纯文本 `#` 不算话题、不进话题流量池）→ 发布前核验编辑器里的真实话题集合与正文一致（不一致 fail 保持 pending）→ 点发布 → 确认跳转 `/publish/success` → 笔记管理核对 → 更新 manifest。
 
 **脚本失败时回退到手动配方**：按 `references/publish-recipe.md` 逐步交互式操作（snapshot 驱动）。该文档记录了全部已踩过的坑：3 个同名「上传图文」元素的歧义、发布按钮被话题联想下拉遮挡、`raw:true` 截图不放大等。
 

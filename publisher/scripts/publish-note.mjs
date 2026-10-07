@@ -1,6 +1,6 @@
 // 发布一篇小红书笔记：ego-browser nodejs < publish-note.mjs
 // 输入契约：/tmp/xhs-publish-task.json = {"seriesRoot": "<绝对路径>", "postId": "01"}
-// 行为：读 manifest → 校验 → 发布 → 核对 → 更新 manifest。失败保持 pending 并写 error。
+// 行为：读 manifest → 校验 → 发布（#话题 逐个经联想下拉转成真实话题并核验数量）→ 核对 → 更新 manifest。失败保持 pending 并写 error。
 // 失败时按 references/publish-recipe.md 手动交互式操作。
 // 平台守卫：Windows 上无 Ego Lite，直接退出并给出指引，避免晦涩堆栈。
 if (process.platform !== "darwin") {
@@ -9,6 +9,59 @@ if (process.platform !== "darwin") {
   );
   process.exit(1);
 }
+// 把正文切成 text / topic 段：#后跟非空白才算话题。话题后的半角空格吃掉——
+// 编辑器插入真实话题节点后自带一个 &nbsp;，再粘贴会产生双空格。
+const splitBodySegments = (body) => {
+  const segs = [];
+  let last = 0;
+  const topicRe = /#[^\s#]+/gu; // 必须提出循环外：字面量在循环内会重建 RegExp，lastIndex 永远归零 → 死循环
+  for (let m; (m = topicRe.exec(body)); ) {
+    const raw = body.slice(last, m.index);
+    const text = segs.length && segs[segs.length - 1].type === "topic" ? raw.replace(/^ +/, "") : raw;
+    if (text) segs.push({ type: "text", value: text });
+    segs.push({ type: "topic", value: m[0].slice(1) });
+    last = m.index + m[0].length;
+  }
+  const tailRaw = body.slice(last);
+  const tail = segs.length && segs[segs.length - 1].type === "topic" ? tailRaw.replace(/^ +/, "") : tailRaw;
+  if (tail) segs.push({ type: "text", value: tail });
+  return segs;
+};
+
+// 输入 #话题名 → 等联想下拉出现精确匹配项（含「新建话题」）→ 点击选中。
+// 下拉条目是异步拉取的，容器出现时可能还是旧条目，必须轮询等待精确匹配而非只等容器出现。
+// 无精确匹配 → Escape 退回纯文本并返回 false（发布前会被话题核验拦下）。
+const insertTopic = async (page, name) => {
+  await page.keyboard.type(`#${name}`, { delay: 60 });
+  const want = `#${name}`;
+  const matched = await page
+    .waitForFunction(
+      (w) => [...document.querySelectorAll("#creator-editor-topic-container .item .name")].some((n) => n.textContent.trim().toLowerCase() === w.toLowerCase()),
+      want,
+      { timeout: 10000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  if (!matched) {
+    await page.keyboard.press("Escape");
+    return false;
+  }
+  await page.evaluate((w) => {
+    [...document.querySelectorAll("#creator-editor-topic-container .item")]
+      .find((i) => i.querySelector(".name")?.textContent.trim().toLowerCase() === w.toLowerCase())
+      .click();
+  }, want);
+  await page.waitForTimeout(200);
+  await page.waitForFunction(
+    (n) => [...document.querySelectorAll(".tiptap.ProseMirror a.tiptap-topic")].some((a) => {
+      try { return JSON.parse(a.dataset.topic).name.toLowerCase() === n.toLowerCase(); } catch { return false; }
+    }),
+    name,
+    { timeout: 5000 }
+  );
+  return true;
+};
+
 (async () => {
   const { readFile, writeFile } = await import("node:fs/promises");
   const taskFile = JSON.parse(await readFile("/tmp/xhs-publish-task.json", "utf8"));
@@ -60,12 +113,33 @@ if (process.platform !== "darwin") {
     await page.waitForSelector(".tiptap.ProseMirror", { timeout: 60000 });
     await page.waitForTimeout(1500);
 
+    // 正文：纯文本段直接粘贴；#话题 必须逐个经联想下拉选中才会成为真实话题节点
+    // （a.tiptap-topic）——纯文本 # 不是话题，不进话题流量池。
     await page.fill('input[placeholder*="标题"]', post.title, { timeout: 8000 });
     await page.click(".tiptap.ProseMirror");
     await page.waitForTimeout(400);
-    await page.keyboard.paste(post.body);
+    const segments = splitBodySegments(post.body);
+    const fallbackTopics = [];
+    for (const seg of segments) {
+      if (seg.type === "text") {
+        if (seg.value) await page.keyboard.paste(seg.value);
+      } else if (!(await insertTopic(page, seg.value))) {
+        fallbackTopics.push(`#${seg.value}`);
+      }
+    }
     await page.waitForTimeout(800);
-    await page.keyboard.press("Escape"); // 关闭话题联想下拉（它会遮挡发布按钮）
+    await page.keyboard.press("Escape"); // 保险：关闭可能残留的话题联想下拉（它会遮挡发布按钮）
+
+    // 话题核验：编辑器里的真实话题必须与正文一致，缺了就是丢流量，宁可失败重试
+    const expectedTopics = [...new Set(segments.filter((s) => s.type === "topic" && !fallbackTopics.includes(`#${s.value}`)).map((s) => s.value.toLowerCase()))].sort();
+    const realTopics = [...new Set(await page.evaluate(() =>
+      [...document.querySelectorAll(".tiptap.ProseMirror a.tiptap-topic")]
+        .map((a) => { try { return JSON.parse(a.dataset.topic).name; } catch { return null; } })
+        .filter(Boolean)
+    ))].map((n) => n.toLowerCase()).sort();
+    if (expectedTopics.join("|") !== realTopics.join("|")) {
+      return fail(`话题核验失败：期望 [${expectedTopics.join(", ")}]，实际 [${realTopics.join(", ")}]${fallbackTopics.length ? `；以下未匹配到话题退回纯文本：${fallbackTopics.join(" ")}` : ""}`);
+    }
 
     // 发布按钮以 snapshot ref 为准（DOM 查询经常找不到）
     const snap = await page.snapshot();
